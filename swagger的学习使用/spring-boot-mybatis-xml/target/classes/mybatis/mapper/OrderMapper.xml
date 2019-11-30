@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.neo.mapper.OrderMapper">
+
+
+    <select id="getOrderList" resultType="order">
+
+        select
+        `id`,
+        `user_id`,
+        `number`,
+        `note`
+        from `order`
+    </select>
+
+    <!--定义resultMap-->
+    <!-- pojo属性与数据库字段一一对应-->
+    <resultMap id="order_list_map" type="order">
+        <!-- <id>用于映射主键-->
+        <id property="id" column="id"/>
+        <!--普通字段用<result来映射>-->
+        <result property="userId" column="user_id"/>
+        <result property="number" column="number"/>
+        <result property="note" column="note"/>
+    </resultMap>
+
+    <!--使用resultMap-->
+    <select id="getOrderListMap" resultMap="order_list_map">
+        select
+        `id`,
+        `user_id`,
+        `number`,
+        `note`
+        from `order`
+    </select>
+
+    <!--sql片段的抽取，定义-->
+    <sql id="order_sql">
+        `id`,
+        `user_id`,
+        `number`,
+        `note`
+    </sql>
+
+    <!--多条件查询 if 的使用
+    如果有两个查询条件 用户可以通过userId和number来查，可能他没有输入userId的值，值用了number来查寻，所以就需要用if来给sql语句做一个条件判断
+
+    -->
+    <select id="getOrderByPojo" parameterType="order" resultMap="order_list_map">
+        <!--
+          select
+           `id`,
+           `user_id`,
+           `number`,
+           `note`
+           from `order`
+           -->
+
+        <!-- sql片段使用：refid:引用定义好的sql片段 -->
+        select
+        <include refid="order_sql"></include>
+        from `order`
+        <!--
+             where 1=1
+             <if test="userId !=null and userId != ''">
+              and user_id = #{userId}
+             </if>
+             <if test="number !=null and number != ''">
+                 and number = #{number}
+             </if>
+         -->
+
+        <!--where标签自动补全关键字，同时处理多余and-->
+        <where>
+            <if test="userId !=null and userId != ''">
+                and user_id = #{userId}
+            </if>
+            <if test="number !=null and number != ''">
+                and number = #{number}
+            </if>
+        </where>
+    </select>
+
+    <!--查询订订单关联用户，一对一关联查询 resultType使用  sql语句是联表查询出来的-->
+    <select id="getOrderUser" resultType="orderUser">
+        select
+        o.`id`,
+        o.`user_id`,
+        o.`number`,
+        o.note
+        from
+        `order` o
+        left join `users` u on u.id = o.user_id;
+
+    </select>
+
+
+    <resultMap type="order" id="order_user_map">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="number" column="number"/>
+        <result property="note" column="note"/>
+        <!-- association用于配置 关联关系:一对一关联关系  一个订单Order只能有一个用户与之关联User
+             property:order类里面的User属性
+             javaType:user的数据类型，支持别名
+        -->
+        <association property="user" javaType="com.neo.model.User">
+            <id  property="id" column="id" jdbcType="BIGINT" />
+            <result  property="userName"  column="userName"  jdbcType="VARCHAR" />
+            <result  property="passWord"  column="passWord"  jdbcType="VARCHAR" />
+            <result  property="userSex"   column="user_sex"  javaType="com.neo.enums.UserSexEnum"/>
+            <result  property="nickName"  column="nick_name" jdbcType="VARCHAR" />
+        </association>
+    </resultMap>
+
+    <select id="getOrderUserMap" resultMap="order_user_map">
+        select
+        o.`id`,
+        o.`user_id`,
+        o.`number`,
+        o.`note`,
+        u.`userName`,
+        u.`passWord`,
+        u.`user_sex`,
+        u.`nick_name`
+        from
+        `order` o
+        left join `users` u on u.id = o.user_id;
+    </select>
+</mapper>

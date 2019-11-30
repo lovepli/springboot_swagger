@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<!-- 命名空间:需要实现的接口的全称 -->
+<mapper namespace="com.neo.mapper.UserMapper" >
+<!--
+    namespace:命名空间，用于隔离sql语句
+    #{} 占位符，相当于jdbc中的？
+    ${} 字符串拼接指令，如果入参为普通类型（String,Long...），括号内写value 例如：'%${value}%' 不要少了''
+
+-->
+<!--
+    <select id="getUserByUserName" parameterType="String" resultType="com.neo.model.User">
+        select
+        id,
+        userName,
+        passWord,
+        user_sex,
+        nick_name
+        from user
+        where userName like #{nameName}
+    </select>
+    -->
+
+  <!--
+  模糊查询
+  resultType:如果返回结果为集合，只需设置每一个的数据类型
+    <select id="getUserByUserName" parameterType="String" resultType="com.neo.model.User">
+        select
+        id,
+        userName,
+        passWord,
+        user_sex,
+        nick_name
+        from user
+    // where userName like #{nameName}
+        where userName like '%${value}%'    //模糊查询
+    </select>
+    -->
+<!--
+
+  //使用自增，keyProperty与之配套使用，这里是users的主键
+    <insert id="insert2" parameterType="com.neo.model.User"  useGeneratedKeys="true" keyProperty="id">
+        //selectKey 主键返回
+       // keyProperty:user中的主键属性
+        //resultType:主键数据类型
+        //order:指定selectKey何时执行，before之前
+   // <selectKey keyProperty="uuid" resultType="String" order="BEFORE">
+   //     select UUID()
+   // </selectKey>】
+        INSERT INTO
+        users
+        (userName,passWord,user_sex,uuid)  //这里我们添加了一个uuid属性在users类中  作为唯一标识
+        VALUES
+        (#{userName}, #{passWord}, #{userSex},#{uuid})
+    </insert>
+-->
+
+    <select id="getUserByQueryVo" parameterType="queryvo" resultType="com.neo.model.User">
+        select
+        id,
+        userName,
+        passWord,
+        user_sex,
+        nick_name
+        from users
+    <!--where nick_name like '%${user.nickName}%'-->
+        where userName =  #{user.userName}
+    </select>
+
+    <select id="getUserCount" resultType="java.lang.Long">
+    <!-- select count(1) from users-->
+        select count(*) from users
+    </select>
+
+    <select id="getUserByIds" parameterType="queryvo" resultType="com.neo.model.User">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM users
+        <where>
+            <!--
+            foreach:循环标签
+            collection:要遍历的集合
+            open:循环开始之前输出的内容
+            item：设置循环变量
+            separator:分隔符
+            close：循环结束之后输出的内容
+            -->
+            <!--目的：id IN (1,3,5,7)-->
+            <foreach collection="ids" open="id IN(" item="uId" separator="," close=")">
+                #{uId}
+            </foreach>
+
+        </where>
+    </select>
+
+    <resultMap type="com.neo.model.User" id="user_order_map">
+        <id column="id" property="id" jdbcType="BIGINT" />
+        <result column="userName" property="userName" jdbcType="VARCHAR" />
+        <result column="passWord" property="passWord" jdbcType="VARCHAR" />
+        <result column="user_sex" property="userSex" javaType="com.neo.enums.UserSexEnum"/>
+        <result column="nick_name" property="nickName" jdbcType="VARCHAR" />
+        <!--
+        collection:用于配置集合:一对多关联关系  (一个User用户可以有多个订单  List<Order>)
+        property:User类当中Order的属性
+        ofType：oders的数据类型，支持别名
+        -->
+        <collection property="orders" ofType="com.neo.model.Order">
+            <id property="id" column="oid"/>  <!--oid-->
+            <result property="userId" column="user_id"/>
+            <result property="number" column="number"/>
+            <result property="note" column="note"/>
+        </collection>
+
+    </resultMap>
+
+    <!--演示一对多关联查询-->
+    <select id="getUserOrderMap" resultMap="user_order_map">
+        select
+        u.`id`,
+        u.`userName`,
+        u.`passWord`,
+        u.`user_sex`,
+        u.`nick_name`,
+        o.`id` oid,  <!--w为了区别 取别名oid-->
+        o.`user_id`,
+        o.`number`,
+        o.`note`
+        from
+        `users` u
+        left join `order` o on u.id = o.user_id;
+    </select>
+
+
+
+
+
+
+
+
+
+<!--注意这里配置的类型，jdbcTypey要求很严格，容易出错 ，但也可以不加-->
+    <resultMap id="BaseResultMap" type="com.neo.model.User" >
+        <id column="id" property="id" jdbcType="BIGINT" />
+        <result column="userName" property="userName" jdbcType="VARCHAR" />
+        <result column="passWord" property="passWord" jdbcType="VARCHAR" />
+        <result column="user_sex" property="userSex" javaType="com.neo.enums.UserSexEnum"/>
+        <result column="nick_name" property="nickName" jdbcType="VARCHAR" />
+    </resultMap>
+
+    <sql id="Base_Column_List" >
+        id, userName, passWord, user_sex, nick_name
+    </sql>
+
+    <select id="getAll" resultMap="BaseResultMap"  >
+       SELECT
+       <include refid="Base_Column_List" />
+	   FROM users
+    </select>
+
+    <select id="getOne" parameterType="java.lang.Long" resultMap="BaseResultMap" >
+        SELECT
+       <include refid="Base_Column_List" />
+	   FROM users
+	   WHERE id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.neo.model.User" >
+       INSERT INTO
+       		users
+       		(userName,passWord,user_sex)
+       	VALUES
+       		(#{userName}, #{passWord}, #{userSex})
+    </insert>
+
+    <update id="update" parameterType="com.neo.model.User" >
+       UPDATE
+       		users
+       SET
+       	<if test="userName != null and userName !=''">userName = #{userName},</if>
+       	<if test="passWord != null">passWord = #{passWord},</if>
+       	nick_name = #{nickName}
+       WHERE
+       		id = #{id}
+    </update>
+
+    <delete id="delete" parameterType="java.lang.Long" >
+       DELETE FROM
+       		 users
+       WHERE
+       		 id =#{id}
+    </delete>
+
+</mapper>

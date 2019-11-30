@@ -1,0 +1,376 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<!-- 命名空间:需要实现的接口的全称 -->
+<mapper namespace="com.neo.mapper.StudentMapper">
+
+    <resultMap id="BaseResultMap" type="com.neo.model.Student">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="name" property="name"/>
+        <result column="age" property="age"/>
+        <result column="sex" property="sex"/>
+        <result column="address" property="address"/>
+        <result column="height" property="height"/>
+        <result column="weight" property="weight"/>
+    </resultMap>
+
+    <insert id="save" parameterType="com.neo.model.Student" keyProperty="id"
+            useGeneratedKeys="true">
+        insert into student(name,age,sex,address,height,weight)
+        values(#{name},#{age},#{sex},#{address},#{height},#{weight})
+    </insert>
+
+    <select id="select" resultType="com.neo.model.Student">
+        select * from student
+    </select>
+
+    <sql id="Base_Column_List">
+        id, name, age, sex, address, height, weight
+    </sql>
+    <select id="selectOne" parameterType="Integer" resultType="com.neo.model.Student">
+        select
+        <include refid="Base_Column_List"/>
+        from student
+        where id =#{id}
+    </select>
+
+    <!--select动态多条件查询 接口方法要加@Param("id") 和@Param("name")  1=1 的条件是绝对相等-->
+    <select id="selectOne2" resultType="com.neo.model.Student">
+        select
+        <include refid="Base_Column_List"/>
+        from student
+        <where>
+         1=1
+        <if test="id !=null and id !=''">
+           and id =#{id}
+        </if>
+        <if test="name !=null and name !=null">
+            and name=#{name}
+        </if>
+        </where>
+    </select>
+
+    <!--如果传入了name,就根据name查询,如果传入了height和weight就根据这些来查询,如果都没有就使用性别为男性来查找-->
+    <select id="selectOne3" resultType="com.neo.model.Student">
+        select
+        <include refid="Base_Column_List"/>
+        from student
+        where
+        age=24
+        <choose>
+        <when test="name !=null and name !=''">
+            and name=#{name}
+        </when>
+        <when test="height !=null and weight!=null">
+               and height=#{height} and  weight=#{weight}
+         </when>
+            <when test="id !=null and id>0">
+                and id=#{id}
+            </when>
+        <otherwise>
+            and sex='男'
+        </otherwise>
+        </choose>
+    </select>
+
+     <!--动态个数条件查询-->
+    <select id="selectOne4" resultType="com.neo.model.Student">
+        select
+        <include refid="Base_Column_List"/>
+        from student
+        where
+        <choose>
+            <when test="id !=null and id>0">
+              id=#{id}
+            </when>
+            <when test="name !=null and name !=''">
+              and name=#{name}
+            </when>
+            <when test="age !=null and age>0">
+                and age=#{age}
+            </when>
+            <when test="height !=null and height>0">
+               and height=#{height}
+            </when>
+            <when test="weight!=null and weight>0">
+                and  weight=#{weight}
+            </when>
+            <when test="address !=null and address !=''">
+                address=#{address}
+            </when>
+            <otherwise>
+                and sex='男'
+            </otherwise>
+        </choose>
+    </select>
+
+
+
+
+    <!-- 演示动态SQL 筛选条件-->
+    <!--
+    多条件满足其一
+    <choose><when><otherwise>配合使用是等价于java中的 switch语句
+    -->
+    <update id="update1" parameterType="com.neo.model.Student">
+        update student
+        set
+        name=#{name}
+        <!--1、if就是条件验证 -->
+        <!-- <if test="id>0"> where id=#{id} </if> -->
+        <!--2、choose:多条件选其一 -->
+        <choose>
+            <!--3、条件是否满足 -->
+            <when test="id>5">
+                where id=#{id}
+            </when>
+            <when test="height>0 ">
+                where height=#{height}
+            </when>
+            <!--4、上述条件都不满足 -->
+            <otherwise>
+                where weight=#{weight}
+            </otherwise>
+        </choose>
+    </update>
+
+    <!--修改数据：多个条件可能同时存在 -->
+    <update id="update2" parameterType="com.neo.model.Student">
+        update student
+        set
+        name=#{name}
+        <!--5、where:是否拼接where -->
+        <where>
+            <!-- <trim prefixOverrides="and | or "></trim> -->
+            <if test="id>0">id=#{id}</if>
+            <if test="height>0 and height !=null and height !=''">or height=#{height}</if>
+            <if test="weight>0 and weight != null and weight !=''">and weight=#{weight}</if>
+        </where>
+    </update>
+
+    <!--修改数据：set的时候根据实际的值进行修改，有值就修改 -->
+    <update id="update4" parameterType="com.neo.model.Student">
+        update student
+        <!--set：根据实际进行set的拼接，还会去除后面多余的, -->
+        <set>
+            <trim prefixOverrides=",">
+                <if test="name!=null and name.length>0">
+                    name=#{name}
+                </if>
+                <if test="age!=null and age>0">
+                    , age=#{age}
+                </if>
+                <if test="sex!=null and sex.length>0">
+                    , sex=#{sex}
+                </if>
+                <if test="address!=null and address.length>0">
+                    , address=#{address}
+                </if>
+                <if test="height!=null and height>0">
+                    , height=#{height}
+                </if>
+                <if test="weight!=null and weight>0">
+                    , weight=#{weight}
+                </if>
+            </trim>
+        </set>
+        <if test="id lte 10">  <!-- id >10-->
+            where id=#{id}
+        </if>
+    </update>
+
+    <sql id="cx">
+        select
+        <include refid="cxzd"/>
+        from student
+    </sql>
+    <sql id="cxzd">
+        id,name,age,weight,height,sex,address
+    </sql>
+
+    <!--foreach的使用 -->
+    <!--通过map集合 -->
+    <select id="selectStudentMapByIds" parameterType="map" resultType="com.neo.model.Student">
+        <include refid="cx"/>
+        where id in
+        <!--foreach遍历集合或数组 -->
+        <foreach collection="ids" item="item" index="i" open="("
+                 close=")">
+            #{item}
+            <if test="i lt ids.size()-1">,</if>
+
+            <!-- 取索引为奇数的主键值 -->
+            <!-- <if test="i%2==1"> #{item} </if> -->
+
+        </foreach>
+        <if test="height>0">
+            and height>#{height}
+        </if>
+    </select>
+
+    <!--Map:不单单forech中的collection属性是map.key,其它所有属性都是map.key,比如下面的name -->
+    <select id="getStudentMapParams" resultType="Student">
+        select * from
+        student s
+        <where>
+            <!--            <if test="name!=null and name.length>0">-->
+            <!--                name=#{name}-->
+            <!--            </if>-->
+            <if test="studentIdsArray!=null and studentIdsArray.length!=0">
+                <!--and s.id in-->
+                s.id in
+                <foreach collection="studentIdsArray" item="studentId"
+                         index="index" open="(" close=")" separator=",">
+                    #{studentId}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <!--通过List集合 -->
+    <!--List:forech中的collection属性类型是List,collection的值必须是:list,item的值可以随意,Dao接口中参数名字随意 -->
+    <select id="getStudentListParams" resultType="Student">
+        select * from
+        student s
+        where s.id in
+        <foreach collection="list" item="studentId" index="index" open="(" close=")" separator=",">
+            ${studentId}
+        </foreach>
+    </select>
+
+    <!--通过数组 -->
+    <!--Array:forech中的collection属性类型是array,collection的值必须是:list,item的值可以随意,Dao接口中参数名字随意 -->
+    <select id="getStudentArrayParams" resultType="Student">
+        select * from student
+        <where>
+            id in
+            <foreach collection="array" item="studentId" open="(" close=")" separator=",">
+                #{studentId}
+            </foreach>
+        </where>
+    </select>
+
+    <select id="selectLikeName" parameterType="String" resultType="student">
+        <!--绑定为模糊查询制定模板 -->
+        <bind name="ln" value="'%'+name+'%'"></bind>
+        select * from
+        student
+        <where>
+            <if test="name !=null and name !=''">
+                name like #{ln}
+            </if>
+        </where>
+    </select>
+
+    <!--普通的模糊查询-->
+    <select id="selectLikeName2" parameterType="String" resultType="student">
+        select * from student where name like '%${name}%'
+    </select>
+
+    <!--动态通过表名和id查询-->
+    <select id="findByTableAndId" resultType="student">
+             select * from ${tableName} where id = #{id}
+         
+    </select>
+
+    <!--批量删除 从id集合List中删除多个对象-->
+    <delete id="DeleteStudentListParams">
+        DELETE FROM
+        student
+        <where>
+        id in
+        <foreach collection="studentIds" item="studentId" index="index" open="(" close=")" separator=",">
+            #{studentId}
+        </foreach>
+        </where>
+    </delete>
+
+    <!--批量删除 从id数组Array中删除多个对象-->
+    <delete id="DeleteStudentArrayParams">
+        DELETE FROM
+        student
+        <where>
+            id in
+            <foreach collection="array" item="studentId" index="index" open="(" close=")" separator=",">
+                #{studentId}
+            </foreach>
+        </where>
+    </delete>
+
+    <!--批量删除 从map中删除多个对象-->
+    <delete id="DeleteStudentMapParams">
+        DELETE FROM
+        student
+        <where>
+            <if test="studentIdsArray!=null and studentIdsArray.length!=0">
+                s.id in
+                <foreach collection="studentIdsArray" item="studentId"
+                         index="index" open="(" close=")" separator=",">
+                    #{studentId}
+                </foreach>
+            </if>
+        </where>
+    </delete>
+
+    <!--批量添加-->
+    <!--批量添加List集合对象-->
+    <insert id="insertStudentListParams">
+        INSERT INTO
+        `student`
+        (id,name,age,weight,height,sex,address)
+        VALUES
+        <foreach collection="studentlist" item="student" separator=",">
+            (
+            #{student.id},
+            #{student.name},
+            #{student.age},
+            #{student.weight},
+            #{student.height},
+            #{student.sex},
+            #{student.address}
+            )
+        </foreach>
+    </insert>
+    <!--批量添加Array集合对象-->
+    <insert id="insertStudentArrayParams">
+        INSERT INTO
+        `student`
+        (id,name,age,weight,height,sex,address)
+        VALUES
+        <foreach collection="students" item="student" separator=",">
+            (
+            #{student.id},
+            #{student.name},
+            #{student.age},
+            #{student.weight},
+            #{student.height},
+            #{student.sex},
+            #{student.address}
+            )
+        </foreach>
+    </insert>
+
+    <!--批量添加Map集合对象-->
+    <insert id="insertStudentMapParams">
+        INSERT INTO
+        `student`
+        (id,name,age,weight,height,sex,address)
+        VALUES
+        <foreach collection="students" item="student" separator=",">
+            (
+            #{student.id},
+            #{student.name},
+            #{student.age},
+            #{student.weight},
+            #{student.height},
+            #{student.sex},
+            #{student.address}
+            )
+        </foreach>
+    </insert>
+
+
+    <!--批量修改-->
+
+
+
+</mapper>
